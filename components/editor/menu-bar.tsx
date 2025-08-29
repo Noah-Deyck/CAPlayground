@@ -138,6 +138,57 @@ export function MenuBar({ projectId, showLeft = true, showRight = true, toggleLe
     router.push("/projects");
   };
 
+  //tendies compiler
+
+  const exportTendies = async () => {
+    try {
+      if (!doc) return;
+      const nameSafe = (doc.meta.name || 'Project').replace(/[^a-z0-9\-_]+/gi, '-');
+      const root: GroupLayer = {
+        id: doc.meta.id,
+        name: doc.meta.name || 'Project',
+        type: 'group',
+        position: { x: Math.round((doc.meta.width || 0) / 2), y: Math.round((doc.meta.height || 0) / 2) },
+        size: { w: doc.meta.width || 0, h: doc.meta.height || 0 },
+        backgroundColor: doc.meta.background,
+        children: (doc.layers as AnyLayer[]) || [],
+      };
+
+      const caBlob = await packCA({
+        project: {
+          id: doc.meta.id,
+          name: doc.meta.name,
+          width: doc.meta.width,
+          height: doc.meta.height,
+          background: doc.meta.background,
+        },
+        root,
+        assets: {},
+      });
+
+      const caFileName = `${nameSafe}.ca`;
+      const res = await fetch(`/api/build-tendies?filename=${encodeURIComponent(caFileName)}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/octet-stream',
+        },
+        body: caBlob,
+      });
+      if (!res.ok) throw new Error('Failed to build zip');
+      const outBlob = await res.blob();
+      const url = URL.createObjectURL(outBlob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${nameSafe}.tendies`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      console.error('Build tendies failed', e);
+    }
+  };
+
   return (
     <div className="w-full h-12 flex items-center justify-between px-3 border-b bg-background/60 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div>
@@ -224,8 +275,8 @@ export function MenuBar({ projectId, showLeft = true, showRight = true, toggleLe
             <DropdownMenuItem className="cursor-pointer" onSelect={(e) => { e.preventDefault(); exportCA(); }} disabled={!doc}>
               Export .ca file
             </DropdownMenuItem>
-            <DropdownMenuItem disabled className="opacity-50">
-              Export Tendies file (coming soon)
+            <DropdownMenuItem disabled={!doc} className="cursor-pointer" onSelect={(e) => { e.preventDefault(); exportTendies(); }}>
+              Export Tendies
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

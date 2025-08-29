@@ -1,6 +1,7 @@
 "use client"
 
 import Link from "next/link"
+import Image from "next/image"
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Menu, X, Sun, Moon, ArrowRight } from "lucide-react"
@@ -55,9 +56,23 @@ export function Navigation() {
           <div className="flex h-14 items-center justify-between px-4 md:px-6">
           {/* Logo and App Name */}
           <div className="flex items-center space-x-3">
-            <div className="h-8 w-8 rounded-lg bg-accent flex items-center justify-center">
-              <div className="h-4 w-4 rounded bg-accent-foreground"></div>
-            </div>
+            {/* light icon */}
+            <Image
+              src="/icon-light.png"
+              alt="CAPlayground icon"
+              width={32}
+              height={32}
+              className="rounded-lg block dark:hidden"
+              priority
+            />
+            {/* dark icon */}
+            <Image
+              src="/icon-dark.png"
+              alt="CAPlayground icon"
+              width={32}
+              height={32}
+              className="rounded-lg hidden dark:block"
+            />
             <Link
               href="/"
               className="font-helvetica-neue text-xl font-bold text-foreground hover:text-accent transition-colors"

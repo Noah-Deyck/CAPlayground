@@ -1,13 +1,15 @@
 "use client";
 
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
-import type { AnyLayer, CAProject, GroupLayer, ImageLayer, LayerBase, ShapeLayer, TextLayer } from "@/lib/ca/types";
+import type { AnyLayer, CAProject, GroupLayer, ImageLayer, LayerBase, ShapeLayer, TextLayer, TimelineState, LayerPropertyAnimation, AnimatableScalarProp } from "@/lib/ca/types";
 import { useLocalStorage } from "@/hooks/use-local-storage";
 
 export type ProjectDocument = {
   meta: Pick<CAProject, "id" | "name" | "width" | "height" | "background">;
   layers: AnyLayer[];
   selectedId?: string | null;
+  timeline: TimelineState;
+  animations: LayerPropertyAnimation[];
 };
 
 const STORAGE_PREFIX = "caplayground-project:";
@@ -20,11 +22,20 @@ export type EditorContextValue = {
   addImageLayer: (src?: string) => void;
   addShapeLayer: (shape?: ShapeLayer["shape"]) => void;
   updateLayer: (id: string, patch: Partial<AnyLayer>) => void;
+  updateLayerTransient: (id: string, patch: Partial<AnyLayer>) => void;
   selectLayer: (id: string | null) => void;
   deleteLayer: (id: string) => void;
   persist: () => void;
   undo: () => void;
   redo: () => void;
+  // timeline & animation
+  play: () => void;
+  pause: () => void;
+  togglePlay: () => void;
+  setTime: (t: number, transient?: boolean) => void;
+  setDuration: (d: number) => void;
+  addKeyframe: (layerId: string, prop: AnimatableScalarProp, value: number) => void;
+  removeKeyframe: (layerId: string, prop: AnimatableScalarProp, time: number) => void;
 };
 
 const EditorContext = createContext<EditorContextValue | undefined>(undefined);
@@ -43,36 +54,54 @@ export function EditorProvider({
   const [doc, setDoc] = useState<ProjectDocument | null>(null);
   const pastRef = useRef<ProjectDocument[]>([]);
   const futureRef = useRef<ProjectDocument[]>([]);
+  const skipPersistRef = useRef(false);
+  const initializedRef = useRef(false);
 
   const pushHistory = useCallback((prev: ProjectDocument) => {
     pastRef.current.push(JSON.parse(JSON.stringify(prev)) as ProjectDocument);
     futureRef.current = [];
   }, []);
 
+  // Initialize doc once on mount to avoid a feedback loop with the persist effect
   useEffect(() => {
+    if (initializedRef.current) return;
+    initializedRef.current = true;
     if (storedDoc) {
-      setDoc(storedDoc);
-    } else {
+      // backfill defaults for timeline/animations
       setDoc({
-        meta: {
-          id: initialMeta.id,
-          name: initialMeta.name,
-          width: initialMeta.width,
-          height: initialMeta.height,
-          background: initialMeta.background ?? "#e5e7eb",
-        },
-        layers: [],
-        selectedId: null,
+        ...storedDoc,
+        timeline: storedDoc.timeline || { duration: 5, fps: 60, currentTime: 0, playing: false, loop: true },
+        animations: storedDoc.animations || [],
       });
+      return;
     }
-  }, [storedDoc, initialMeta.id]);
+    setDoc({
+      meta: {
+        id: initialMeta.id,
+        name: initialMeta.name,
+        width: initialMeta.width,
+        height: initialMeta.height,
+        background: initialMeta.background ?? "#e5e7eb",
+      },
+      layers: [],
+      selectedId: null,
+      timeline: { duration: 5, fps: 60, currentTime: 0, playing: false, loop: true },
+      animations: [],
+    });
+  }, [initialMeta.id]);
 
   const persist = useCallback(() => {
     if (doc) setStoredDoc(doc);
   }, [doc, setStoredDoc]);
 
   useEffect(() => {
-    if (doc) setStoredDoc(doc);
+    if (!doc) return;
+    if (skipPersistRef.current) {
+     
+      skipPersistRef.current = false;
+      return;
+    }
+    setStoredDoc(doc);
   }, [doc, setStoredDoc]);
 
   const selectLayer = useCallback((id: string | null) => {
@@ -183,6 +212,18 @@ export function EditorProvider({
     });
   }, [updateInTree]);
 
+  const updateLayerTransient = useCallback((id: string, patch: Partial<AnyLayer>) => {
+    skipPersistRef.current = true;
+    setDoc((prev) => {
+      if (!prev) return prev;
+      
+      return {
+        ...prev,
+        layers: updateInTree(prev.layers, id, patch),
+      };
+    });
+  }, [updateInTree]);
+
   const deleteLayer = useCallback((id: string) => {
     setDoc((prev) => {
       if (!prev) return prev;
@@ -215,6 +256,126 @@ export function EditorProvider({
     });
   }, []);
 
+  // Timeline & playback
+  const rafRef = useRef<number | null>(null);
+  const lastTickRef = useRef<number | null>(null);
+
+  const setTime = useCallback((t: number, transient = false) => {
+    setDoc((prev) => {
+      if (!prev) return prev;
+      const clamped = Math.max(0, Math.min(prev.timeline.duration, t));
+      // No-op if time hasn't changed to avoid render loops with controlled Slider
+      if (Math.abs(prev.timeline.currentTime - clamped) < 1e-6) return prev;
+      if (transient) skipPersistRef.current = true;
+      return { ...prev, timeline: { ...prev.timeline, currentTime: clamped } };
+    });
+  }, []);
+
+  const setDuration = useCallback((d: number) => {
+    setDoc((prev) => {
+      if (!prev) return prev;
+      const duration = Math.max(0.1, d);
+      return { ...prev, timeline: { ...prev.timeline, duration, currentTime: Math.min(prev.timeline.currentTime, duration) } };
+    });
+  }, []);
+
+  const tick = useCallback((now: number) => {
+    setDoc((prev) => {
+      if (!prev) return prev;
+      if (!prev.timeline.playing) return prev;
+      const last = lastTickRef.current ?? now;
+      const dt = (now - last) / 1000;
+      const nextTime = prev.timeline.currentTime + dt;
+      let t = nextTime;
+      let playing = prev.timeline.playing;
+      if (t >= prev.timeline.duration) {
+        if (prev.timeline.loop) {
+          t = t % prev.timeline.duration;
+        } else {
+          t = prev.timeline.duration;
+          playing = false;
+        }
+      }
+      lastTickRef.current = now;
+      skipPersistRef.current = true;
+      return { ...prev, timeline: { ...prev.timeline, currentTime: t, playing } };
+    });
+    rafRef.current = requestAnimationFrame(tick);
+  }, []);
+
+  const play = useCallback(() => {
+    setDoc((prev) => {
+      if (!prev) return prev;
+      return { ...prev, timeline: { ...prev.timeline, playing: true } };
+    });
+  }, []);
+
+  const pause = useCallback(() => {
+    setDoc((prev) => {
+      if (!prev) return prev;
+      return { ...prev, timeline: { ...prev.timeline, playing: false } };
+    });
+  }, []);
+
+  const togglePlay = useCallback(() => {
+    setDoc((prev) => {
+      if (!prev) return prev;
+      return { ...prev, timeline: { ...prev.timeline, playing: !prev.timeline.playing } };
+    });
+  }, []);
+
+  useEffect(() => {
+    if (!doc?.timeline.playing) {
+      if (rafRef.current) cancelAnimationFrame(rafRef.current);
+      rafRef.current = null;
+      lastTickRef.current = null;
+      return;
+    }
+    lastTickRef.current = performance.now();
+    rafRef.current = requestAnimationFrame(tick);
+    return () => {
+      if (rafRef.current) cancelAnimationFrame(rafRef.current);
+      rafRef.current = null;
+    };
+  }, [doc?.timeline.playing, tick]);
+
+  const addKeyframe = useCallback((layerId: string, prop: AnimatableScalarProp, value: number) => {
+    setDoc((prev) => {
+      if (!prev) return prev;
+      const time = prev.timeline.currentTime;
+      const existing = prev.animations.find((a) => a.layerId === layerId && a.property === prop);
+      let animations = prev.animations.slice();
+      if (!existing) {
+        const anim: LayerPropertyAnimation = { id: genId(), layerId, property: prop, keyframes: [{ time, value }] };
+        animations.push(anim);
+      } else {
+        const kfs = existing.keyframes.slice();
+        const idx = kfs.findIndex((k) => Math.abs(k.time - time) < 1e-3);
+        if (idx >= 0) {
+          kfs[idx] = { ...kfs[idx], value };
+        } else {
+          kfs.push({ time, value });
+          kfs.sort((a, b) => a.time - b.time);
+        }
+        animations = animations.map((a) => (a === existing ? { ...a, keyframes: kfs } : a));
+      }
+      pushHistory(prev);
+      return { ...prev, animations };
+    });
+  }, [pushHistory]);
+
+  const removeKeyframe = useCallback((layerId: string, prop: AnimatableScalarProp, time: number) => {
+    setDoc((prev) => {
+      if (!prev) return prev;
+      const animations = prev.animations.map((a) => {
+        if (a.layerId !== layerId || a.property !== prop) return a;
+        return { ...a, keyframes: a.keyframes.filter((k) => Math.abs(k.time - time) >= 1e-3) };
+      });
+      pushHistory(prev);
+      return { ...prev, animations };
+    });
+  }, [pushHistory]);
+
   const value = useMemo<EditorContextValue>(() => ({
     doc,
     setDoc,
@@ -222,12 +383,20 @@ export function EditorProvider({
     addImageLayer,
     addShapeLayer,
     updateLayer,
+    updateLayerTransient,
     selectLayer,
     deleteLayer,
     persist,
     undo,
     redo,
-  }), [doc, addTextLayer, addImageLayer, addShapeLayer, updateLayer, selectLayer, deleteLayer, persist, undo, redo]);
+    play,
+    pause,
+    togglePlay,
+    setTime,
+    setDuration,
+    addKeyframe,
+    removeKeyframe,
+  }), [doc, addTextLayer, addImageLayer, addShapeLayer, updateLayer, updateLayerTransient, selectLayer, deleteLayer, persist, undo, redo, play, pause, togglePlay, setTime, setDuration, addKeyframe, removeKeyframe]);
 
   return <EditorContext.Provider value={value}>{children}</EditorContext.Provider>;
 }

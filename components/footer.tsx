@@ -1,4 +1,5 @@
 import Link from "next/link"
+import Image from "next/image"
 import { Github, Twitter, Mail } from "lucide-react"
 
 export function Footer() {
@@ -9,9 +10,23 @@ export function Footer() {
           {/* About */}
           <div className="space-y-4">
             <div className="flex items-center space-x-3">
-              <div className="h-8 w-8 rounded-lg bg-accent flex items-center justify-center">
-                <div className="h-4 w-4 rounded bg-accent-foreground"></div>
-              </div>
+              {/* light icon */}
+              <Image
+                src="/icon-light.png"
+                alt="CAPlayground icon"
+                width={32}
+                height={32}
+                className="rounded-lg block dark:hidden"
+                priority
+              />
+              {/* dark icon */}
+              <Image
+                src="/icon-dark.png"
+                alt="CAPlayground icon"
+                width={32}
+                height={32}
+                className="rounded-lg hidden dark:block"
+              />
               <span className="font-helvetica-neue text-xl font-bold">CAPlayground</span>
             </div>
             <p className="text-muted-foreground text-sm">
