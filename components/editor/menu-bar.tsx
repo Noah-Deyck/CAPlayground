@@ -21,11 +21,13 @@ import type { AnyLayer, GroupLayer } from "@/lib/ca/types";
 import { useLocalStorage } from "@/hooks/use-local-storage";
 import { useEffect, useState } from "react";
 
-interface ProjectMeta { id: string; name: string; width?: number; height?: number; createdAt?: string }
-
 export function MenuBar({ projectId }: { projectId: string }) {
   const router = useRouter();
   const { doc } = useEditor();
+  type ProjectMeta = {
+    id: string;
+    name: string;
+  };
   const [projects, setProjects] = useLocalStorage<ProjectMeta[]>("caplayground-projects", []);
 
   const [renameOpen, setRenameOpen] = useState(false);
@@ -148,7 +150,61 @@ export function MenuBar({ projectId }: { projectId: string }) {
           }}
           disabled={!doc}
         >
-          Export
+          Export CA
+        </Button>
+        <Button
+          variant="secondary"
+          onClick={async () => {
+            try {
+              if (!doc) return;
+              const nameSafe = (doc.meta.name || 'Project').replace(/[^a-z0-9\-_]+/gi, '-');
+              const root: GroupLayer = {
+                id: doc.meta.id,
+                name: doc.meta.name || 'Project',
+                type: 'group',
+                position: { x: Math.round((doc.meta.width || 0) / 2), y: Math.round((doc.meta.height || 0) / 2) },
+                size: { w: doc.meta.width || 0, h: doc.meta.height || 0 },
+                backgroundColor: doc.meta.background,
+                children: (doc.layers as AnyLayer[]) || [],
+              };
+
+              const caBlob = await packCA({
+                project: {
+                  id: doc.meta.id,
+                  name: doc.meta.name,
+                  width: doc.meta.width,
+                  height: doc.meta.height,
+                  background: doc.meta.background,
+                },
+                root,
+                assets: {},
+              });
+
+              const caFileName = `${nameSafe}.ca`;
+              const res = await fetch(`/api/build-tendies?filename=${encodeURIComponent(caFileName)}`, {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/octet-stream',
+                },
+                body: caBlob,
+              });
+              if (!res.ok) throw new Error('Failed to build zip');
+              const outBlob = await res.blob();
+              const url = URL.createObjectURL(outBlob);
+              const a = document.createElement('a');
+              a.href = url;
+              a.download = `${nameSafe}.tendies`;
+              document.body.appendChild(a);
+              a.click();
+              a.remove();
+              URL.revokeObjectURL(url);
+            } catch (e) {
+              console.error('Build tendies failed', e);
+            }
+          }}
+          disabled={!doc}
+        >
+          Export Tendies
         </Button>
       </div>
 

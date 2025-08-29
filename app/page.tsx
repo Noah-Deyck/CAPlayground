@@ -2,7 +2,7 @@ import { Navigation } from "@/components/navigation"
 import { Footer } from "@/components/footer"
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
-import { Send } from "lucide-react"
+import { Send, Map } from "lucide-react"
 
 export default function HomePage() {
   return (
