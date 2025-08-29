@@ -2,11 +2,7 @@ import { Navigation } from "@/components/navigation"
 import { Footer } from "@/components/footer"
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
-<<<<<<< HEAD
-import { Send, Map } from "lucide-react"
-=======
 import { Send, Map as MapIcon } from "lucide-react"
->>>>>>> 32c0364e2f0ed78535dae8598aa7f9d57122ea25
 
 export default function HomePage() {
   return (
