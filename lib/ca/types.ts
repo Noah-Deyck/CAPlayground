@@ -55,6 +55,36 @@ export type GroupLayer = LayerBase & {
 
 export type AnyLayer = ImageLayer | TextLayer | ShapeLayer | GroupLayer;
 
+// Animation types (minimal)
+export type AnimatableScalarProp =
+  | 'position.x'
+  | 'position.y'
+  | 'size.w'
+  | 'size.h'
+  | 'rotation'
+  | 'opacity';
+
+export type Keyframe = {
+  time: number; // seconds
+  value: number;
+  easing?: 'linear';
+};
+
+export type LayerPropertyAnimation = {
+  id: string;
+  layerId: string;
+  property: AnimatableScalarProp;
+  keyframes: Keyframe[]; // sorted by time ascending
+};
+
+export type TimelineState = {
+  duration: number; // seconds
+  fps: number;
+  currentTime: number; // seconds
+  playing: boolean;
+  loop: boolean;
+};
+
 export type CAAsset = {
   path: string;
   data: Blob | ArrayBuffer | string;

@@ -10,6 +10,7 @@ import { MenuBar } from "@/components/editor/menu-bar";
 import { LayersPanel } from "@/components/editor/layers-panel";
 import { Inspector } from "@/components/editor/inspector";
 import { CanvasPreview } from "@/components/editor/canvas-preview";
+import { Timeline } from "@/components/editor/timeline";
 
 export default function EditorPage() {
   const params = useParams<{ id: string }>();
@@ -80,8 +81,9 @@ export default function EditorPage() {
               </>
             )}
 
-            <div className="min-h-0 flex-1">
+            <div className="min-h-0 flex-1 flex flex-col">
               <CanvasPreview />
+              <Timeline />
             </div>
 
             {showRight && (

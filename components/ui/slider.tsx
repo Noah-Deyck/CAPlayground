@@ -1,62 +1,68 @@
 "use client"
 
 import * as React from "react"
-import * as SliderPrimitive from "@radix-ui/react-slider"
-
 import { cn } from "@/lib/utils"
+
+type SliderProps = {
+  className?: string
+  min?: number
+  max?: number
+  step?: number
+  value?: number[]
+  defaultValue?: number[]
+  onValueChange?: (value: number[]) => void
+  onValueCommit?: (value: number[]) => void
+} & Omit<React.ComponentProps<"input">, "value" | "defaultValue" | "onChange" | "min" | "max" | "step">
 
 function Slider({
   className,
-  defaultValue,
-  value,
   min = 0,
   max = 100,
-  ...props
-}: React.ComponentProps<typeof SliderPrimitive.Root>) {
-  const _values = React.useMemo(
-    () =>
-      Array.isArray(value)
-        ? value
-        : Array.isArray(defaultValue)
-          ? defaultValue
-          : [min, max],
-    [value, defaultValue, min, max]
-  )
+  step = 1,
+  value,
+  defaultValue,
+  onValueChange,
+  onValueCommit,
+  ...rest
+}: SliderProps) {
+  const handleChange: React.ChangeEventHandler<HTMLInputElement> = (e) => {
+    const v = Number(e.target.value)
+    onValueChange?.([v])
+  }
+
+  const handleCommit = () => {
+    const el = inputRef.current
+    if (!el) return
+    const v = Number(el.value)
+    onValueCommit?.([v])
+  }
+
+  const inputRef = React.useRef<HTMLInputElement | null>(null)
 
   return (
-    <SliderPrimitive.Root
+    <div
       data-slot="slider"
-      defaultValue={defaultValue}
-      value={value}
-      min={min}
-      max={max}
-      className={cn(
-        "relative flex w-full touch-none items-center select-none data-[disabled]:opacity-50 data-[orientation=vertical]:h-full data-[orientation=vertical]:min-h-44 data-[orientation=vertical]:w-auto data-[orientation=vertical]:flex-col",
-        className
-      )}
-      {...props}
+      className={cn("relative flex w-full items-center select-none", className)}
     >
-      <SliderPrimitive.Track
-        data-slot="slider-track"
+      <input
+        ref={inputRef}
+        type="range"
+        min={min}
+        max={max}
+        step={step}
+        value={Array.isArray(value) ? value[0] : undefined}
+        defaultValue={Array.isArray(defaultValue) ? defaultValue[0] : undefined}
+        onChange={handleChange}
+        onMouseUp={handleCommit}
+        onTouchEnd={handleCommit}
         className={cn(
-          "bg-muted relative grow overflow-hidden rounded-full data-[orientation=horizontal]:h-1.5 data-[orientation=horizontal]:w-full data-[orientation=vertical]:h-full data-[orientation=vertical]:w-1.5"
+          "w-full h-1.5 rounded-full bg-muted appearance-none outline-none",
+          "[&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:size-4 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-background [&::-webkit-slider-thumb]:border [&::-webkit-slider-thumb]:border-primary",
+          "[&::-moz-range-thumb]:appearance-none [&::-moz-range-thumb]:size-4 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:background [&::-moz-range-thumb]:border [&::-moz-range-thumb]:border-primary"
         )}
-      >
-        <SliderPrimitive.Range
-          data-slot="slider-range"
-          className={cn(
-            "bg-primary absolute data-[orientation=horizontal]:h-full data-[orientation=vertical]:w-full"
-          )}
-        />
-      </SliderPrimitive.Track>
-      {Array.from({ length: _values.length }, (_, index) => (
-        <SliderPrimitive.Thumb
-          data-slot="slider-thumb"
-          key={index}
-          className="border-primary bg-background ring-ring/50 block size-4 shrink-0 rounded-full border shadow-sm transition-[color,box-shadow] hover:ring-4 focus-visible:ring-4 focus-visible:outline-hidden disabled:pointer-events-none disabled:opacity-50"
-        />
-      ))}
-    </SliderPrimitive.Root>
+        {...rest}
+      />
+    </div>
   )
 }
 

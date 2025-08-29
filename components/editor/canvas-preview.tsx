@@ -2,13 +2,13 @@
 
 import { Card } from "@/components/ui/card";
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { ReactNode, MouseEvent as ReactMouseEvent } from "react";
+import type { ReactNode, MouseEvent as ReactMouseEvent, CSSProperties } from "react";
 import { useEditor } from "./editor-context";
-import type { AnyLayer, GroupLayer, ShapeLayer } from "@/lib/ca/types";
+import type { AnyLayer, GroupLayer, LayerBase, ShapeLayer, LayerPropertyAnimation } from "@/lib/ca/types";
 
 export function CanvasPreview() {
   const ref = useRef<HTMLDivElement | null>(null);
-  const { doc, updateLayer, updateLayerTransient, selectLayer } = useEditor();
+  const { doc, updateLayer, updateLayerTransient, selectLayer, addKeyframe } = useEditor();
   const [size, setSize] = useState({ w: 600, h: 400 });
   const draggingRef = useRef<{ id: string; startClientX: number; startClientY: number; startX: number; startY: number } | null>(null);
 
@@ -37,10 +37,57 @@ export function CanvasPreview() {
 
   const layers = doc?.layers ?? [];
 
+  
+  const getAnimatedValue = (layerId: string, prop: string, base: number): number => {
+    const animations: LayerPropertyAnimation[] = doc?.animations ?? [];
+    const anim = animations.find((a: LayerPropertyAnimation) => a.layerId === layerId && (a.property as string) === (prop as any));
+    if (!anim || anim.keyframes.length === 0 || !doc) return base;
+    const t = doc.timeline.currentTime;
+    const kfs = anim.keyframes;
+    // before first
+    if (t <= kfs[0].time) return kfs[0].value;
+    // after last
+    if (t >= kfs[kfs.length - 1].time) return kfs[kfs.length - 1].value;
+  
+    let i = 0;
+    while (i + 1 < kfs.length && !(t >= kfs[i].time && t <= kfs[i + 1].time)) i++;
+    const a = kfs[i];
+    const b = kfs[i + 1];
+    const u = (t - a.time) / Math.max(1e-6, b.time - a.time);
+    return a.value + (b.value - a.value) * u; // linear only
+  };
+
+  const applyAnimated = (l: AnyLayer): AnyLayer => {
+    const base = l as AnyLayer;
+    const px = getAnimatedValue(base.id, 'position.x', base.position.x);
+    const py = getAnimatedValue(base.id, 'position.y', base.position.y);
+    const w = getAnimatedValue(base.id, 'size.w', base.size.w);
+    const h = getAnimatedValue(base.id, 'size.h', base.size.h);
+    const rot = getAnimatedValue(base.id, 'rotation', base.rotation ?? 0);
+    const op = getAnimatedValue(base.id, 'opacity', base.opacity ?? 1);
+    const common: LayerBase = {
+      ...base,
+      position: { x: px, y: py },
+      size: { w, h },
+      rotation: rot,
+      opacity: op,
+    } as any;
+    if (base.type === 'group') {
+      const g = base as GroupLayer;
+      return { ...(common as any), type: 'group', children: g.children.map(applyAnimated) } as AnyLayer;
+    }
+    return { ...(common as any), type: base.type } as AnyLayer;
+  };
+
+  const animatedLayers = useMemo(() => layers.map(applyAnimated), [layers, doc?.timeline.currentTime, doc?.animations]);
+
   const startDrag = (l: AnyLayer, e: ReactMouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
     selectLayer(l.id);
+    // Record starting keyframe at current timeline time before moving
+    addKeyframe(l.id, 'position.x' as any, l.position.x);
+    addKeyframe(l.id, 'position.y' as any, l.position.y);
     draggingRef.current = {
       id: l.id,
       startClientX: e.clientX,
@@ -48,7 +95,7 @@ export function CanvasPreview() {
       startX: l.position.x,
       startY: l.position.y,
     };
-    // Disable text selection while dragging
+   
     document.body.style.userSelect = "none";
 
     const onMove = (ev: MouseEvent) => {
@@ -63,7 +110,11 @@ export function CanvasPreview() {
       if (d) {
         const dx = (ev.clientX - d.startClientX) / scale;
         const dy = (ev.clientY - d.startClientY) / scale;
-        updateLayer(d.id, { position: { x: d.startX + dx, y: d.startY + dy } as any });
+        // Record keyframes for position at the current timeline time (Blender-style)
+        const nx = d.startX + dx;
+        const ny = d.startY + dy;
+        addKeyframe(d.id, 'position.x' as any, nx);
+        addKeyframe(d.id, 'position.y' as any, ny);
       }
       draggingRef.current = null;
       document.body.style.userSelect = "";
@@ -74,13 +125,14 @@ export function CanvasPreview() {
     window.addEventListener("mouseup", onUp);
   };
 
-  const renderLayer = (l: AnyLayer): ReactNode => {    const common: React.CSSProperties = {
+  const renderLayer = (l: AnyLayer): ReactNode => {    const common: CSSProperties = {
       position: "absolute",
       left: l.position.x,
       top: l.position.y,
       width: l.size.w,
       height: l.size.h,
       transform: `rotate(${l.rotation ?? 0}deg)`,
+      opacity: l.opacity ?? 1,
       display: l.visible === false ? "none" : undefined,
       cursor: "move",
     };
@@ -147,7 +199,7 @@ export function CanvasPreview() {
           boxShadow: "0 0 0 1px rgba(0,0,0,0.05), 0 10px 30px rgba(0,0,0,0.08)",
         }}
       >
-        {layers.map((l) => renderLayer(l))}
+        {animatedLayers.map((l) => renderLayer(l))}
       </div>
     </Card>
   );
