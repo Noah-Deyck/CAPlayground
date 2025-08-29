@@ -18,6 +18,8 @@ export default function EditorPage() {
   const [meta, setMeta] = useState<{ id: string; name: string; width: number; height: number; background?: string } | null>(null);
   const [leftWidth, setLeftWidth] = useState(320);
   const [rightWidth, setRightWidth] = useState(340);
+  const [showLeft, setShowLeft] = useState(true);
+  const [showRight, setShowRight] = useState(true);
   const containerRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -41,61 +43,75 @@ export default function EditorPage() {
   return (
     <EditorProvider projectId={projectId} initialMeta={meta}>
       <div className="flex flex-col h-[calc(100vh)]" ref={containerRef}>
-        <MenuBar projectId={projectId} />
+        <MenuBar
+          projectId={projectId}
+          showLeft={showLeft}
+          showRight={showRight}
+          toggleLeft={() => setShowLeft((v) => !v)}
+          toggleRight={() => setShowRight((v) => !v)}
+        />
         <div className="flex-1 px-4 py-4 overflow-hidden">
           <div className="h-full w-full flex gap-0">
-            <div className="min-h-0 flex-shrink-0" style={{ width: leftWidth }}>
-              <LayersPanel />
-            </div>
-            <div
-              className="relative w-2 mx-0 h-full self-stretch cursor-col-resize flex-shrink-0"
-              onMouseDown={(e) => {
-                e.preventDefault();
-                const startX = e.clientX;
-                const start = leftWidth;
-                const onMove = (ev: MouseEvent) => {
-                  const dx = ev.clientX - startX;
-                  const next = Math.max(240, Math.min(560, start + dx));
-                  setLeftWidth(next);
-                };
-                const onUp = () => {
-                  window.removeEventListener('mousemove', onMove);
-                  window.removeEventListener('mouseup', onUp);
-                };
-                window.addEventListener('mousemove', onMove);
-                window.addEventListener('mouseup', onUp);
-              }}
-              aria-label="Resize left column"
-            />
+            {showLeft && (
+              <>
+                <div className="min-h-0 flex-shrink-0" style={{ width: leftWidth }}>
+                  <LayersPanel />
+                </div>
+                <div
+                  className="relative w-2 mx-0 h-full self-stretch cursor-col-resize flex-shrink-0"
+                  onMouseDown={(e) => {
+                    e.preventDefault();
+                    const startX = e.clientX;
+                    const start = leftWidth;
+                    const onMove = (ev: MouseEvent) => {
+                      const dx = ev.clientX - startX;
+                      const next = Math.max(240, Math.min(560, start + dx));
+                      setLeftWidth(next);
+                    };
+                    const onUp = () => {
+                      window.removeEventListener('mousemove', onMove);
+                      window.removeEventListener('mouseup', onUp);
+                    };
+                    window.addEventListener('mousemove', onMove);
+                    window.addEventListener('mouseup', onUp);
+                  }}
+                  aria-label="Resize left column"
+                />
+              </>
+            )}
 
             <div className="min-h-0 flex-1">
               <CanvasPreview />
             </div>
 
-            <div
-              className="relative w-2 mx-0 h-full self-stretch cursor-col-resize flex-shrink-0"
-              onMouseDown={(e) => {
-                e.preventDefault();
-                const startX = e.clientX;
-                const start = rightWidth;
-                const onMove = (ev: MouseEvent) => {
-                  const dx = startX - ev.clientX;
-                  const next = Math.max(260, Math.min(560, start + dx));
-                  setRightWidth(next);
-                };
-                const onUp = () => {
-                  window.removeEventListener('mousemove', onMove);
-                  window.removeEventListener('mouseup', onUp);
-                };
-                window.addEventListener('mousemove', onMove);
-                window.addEventListener('mouseup', onUp);
-              }}
-              aria-label="Resize right column"
-            />
+            {showRight && (
+              <>
+                <div
+                  className="relative w-2 mx-0 h-full self-stretch cursor-col-resize flex-shrink-0"
+                  onMouseDown={(e) => {
+                    e.preventDefault();
+                    const startX = e.clientX;
+                    const start = rightWidth;
+                    const onMove = (ev: MouseEvent) => {
+                      const dx = startX - ev.clientX;
+                      const next = Math.max(260, Math.min(560, start + dx));
+                      setRightWidth(next);
+                    };
+                    const onUp = () => {
+                      window.removeEventListener('mousemove', onMove);
+                      window.removeEventListener('mouseup', onUp);
+                    };
+                    window.addEventListener('mousemove', onMove);
+                    window.addEventListener('mouseup', onUp);
+                  }}
+                  aria-label="Resize right column"
+                />
 
-            <div className="min-h-0 flex-shrink-0" style={{ width: rightWidth }}>
-              <Inspector />
-            </div>
+                <div className="min-h-0 flex-shrink-0" style={{ width: rightWidth }}>
+                  <Inspector />
+                </div>
+              </>
+            )}
           </div>
         </div>
       </div>

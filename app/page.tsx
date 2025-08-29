@@ -2,7 +2,11 @@ import { Navigation } from "@/components/navigation"
 import { Footer } from "@/components/footer"
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
+<<<<<<< HEAD
 import { Send, Map } from "lucide-react"
+=======
+import { Send, Map as MapIcon } from "lucide-react"
+>>>>>>> 32c0364e2f0ed78535dae8598aa7f9d57122ea25
 
 export default function HomePage() {
   return (
@@ -20,7 +24,7 @@ export default function HomePage() {
                 {/* notification */}
                 <Link href="/roadmap">
                   <div className="inline-flex items-center justify-center px-6 py-2.5 rounded-full bg-accent/10 backdrop-blur-sm border border-accent/20 mb-4 transition-all duration-200 hover:bg-accent/20 hover:border-accent/30 hover:shadow-sm cursor-pointer">
-                    <Map className="h-4 w-4 text-accent mr-2" aria-hidden="true" />
+                    <MapIcon className="h-4 w-4 text-accent mr-2" aria-hidden="true" />
                     <span className="text-accent font-sans font-medium text-sm">View the Roadmap</span>
                   </div>
                 </Link>
