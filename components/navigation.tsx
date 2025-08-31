@@ -84,9 +84,14 @@ export function Navigation() {
 
           {/* Desktop Navigation */}
           <div className="hidden md:flex items-center space-x-4">
-            <Link href="/docs" className="text-foreground hover:text-accent transition-colors">
+            <a
+              href="https://sandbox-escape.github.io/capdocs"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-foreground hover:text-accent transition-colors"
+            >
               Docs
-            </Link>
+            </a>
             <Link href="/contributors" className="text-foreground hover:text-accent transition-colors">
               Contributors
             </Link>
@@ -130,13 +135,15 @@ export function Navigation() {
         >
           <div className="rounded-b-2xl border border-t-0 border-border bg-background/95 backdrop-blur-sm shadow-md">
             <div className="flex flex-col space-y-1 py-2">
-              <Link
-                href="/docs"
+              <a
+                href="https://sandbox-escape.github.io/capdocs"
+                target="_blank"
+                rel="noopener noreferrer"
                 className="text-foreground hover:text-accent hover:bg-muted/50 transition-all duration-200 py-3 px-6 rounded-lg mx-2"
                 onClick={() => setIsMenuOpen(false)}
               >
                 Docs
-              </Link>
+              </a>
               <Link
                 href="/contributors"
                 className="text-foreground hover:text-accent hover:bg-muted/50 transition-all duration-200 py-3 px-6 rounded-lg mx-2"
