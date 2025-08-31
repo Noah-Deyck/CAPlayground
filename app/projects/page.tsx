@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { useLocalStorage } from "@/hooks/use-local-storage";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Dialog,
@@ -50,6 +51,8 @@ export default function ProjectsPage() {
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [isBulkDeleteOpen, setIsBulkDeleteOpen] = useState(false);
   const importInputRef = useRef<HTMLInputElement | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [sortBy, setSortBy] = useState<"name-asc" | "name-desc" | "date-new" | "date-old">("date-new");
 
   const projectsArray = Array.isArray(projects) ? projects : [];
 
@@ -196,6 +199,24 @@ export default function ProjectsPage() {
     }
   };
 
+  // Filter and sort projects for display
+  const filteredProjects = projectsArray.filter((p) =>
+    p.name.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+  const visibleProjects = [...filteredProjects].sort((a, b) => {
+    switch (sortBy) {
+      case "name-asc":
+        return a.name.localeCompare(b.name);
+      case "name-desc":
+        return b.name.localeCompare(a.name);
+      case "date-old":
+        return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+      case "date-new":
+      default:
+        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+    }
+  });
+
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="max-w-5xl mx-auto">
@@ -297,7 +318,35 @@ export default function ProjectsPage() {
 
         {/* Projects List */}
         <div className="space-y-4">
-          <h2 className="text-xl font-semibold">Your Projects ({projectsArray.length})</h2>
+          <h2 className="text-xl font-semibold">Your Projects ({visibleProjects.length}{projectsArray.length !== visibleProjects.length ? ` of ${projectsArray.length}` : ""})</h2>
+
+          {/* Search + Sort Controls */}
+          <div className="flex flex-col sm:flex-row gap-2 items-stretch sm:items-center justify-between">
+            <Input
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search projects..."
+              className="sm:max-w-sm"
+            />
+            <div className="flex items-center gap-2">
+              <Select
+                value={sortBy}
+                onValueChange={(value: "name-asc" | "name-desc" | "date-new" | "date-old") =>
+                  setSortBy(value)
+                }
+              >
+                <SelectTrigger className="min-w-[200px]">
+                  <SelectValue placeholder="Sort by" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="name-asc">Name (A → Z)</SelectItem>
+                  <SelectItem value="name-desc">Name (Z → A)</SelectItem>
+                  <SelectItem value="date-new">Date created (Newest)</SelectItem>
+                  <SelectItem value="date-old">Date created (Oldest)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
           
           {projectsArray.length === 0 ? (
             <div className="text-center py-12">
@@ -306,7 +355,7 @@ export default function ProjectsPage() {
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {projectsArray.map((project) => {
+              {visibleProjects.map((project) => {
                 const isSelected = selectedIds.includes(project.id);
                 return (
                   <Card 

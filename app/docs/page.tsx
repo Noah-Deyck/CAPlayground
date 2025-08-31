@@ -33,17 +33,33 @@ export default function DocsPage() {
               for detailed documentation on creating stunning animated wallpapers.
             </p>
 
-            {/* CTA */}
-            <div className="pt-12">
-              <p className="text-muted-foreground mb-6">Want to be notified when documentation is available? (You can't)</p>
-              <Link href="/">
-                <Button
-                  variant="outline"
-                  className="border-accent text-accent hover:bg-accent hover:text-accent-foreground bg-transparent"
-                >
-                  Back to Home
-                </Button>
-              </Link>
+            {/* External Docs Link */}
+            <div className="pt-6">
+              <div className="flex flex-col items-center gap-4">
+                <p className="text-muted-foreground">Read the documentation:</p>
+                <div className="flex gap-3 justify-center">
+                  <a
+                    href="https://sandbox-escape.github.io/capdocs"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    <Button className="">
+                      <FileText className="w-4 h-4 mr-2" /> Open Docs Site
+                    </Button>
+                  </a>
+                  <Link href="/">
+                    <Button
+                      variant="outline"
+                      className="border-accent text-accent hover:bg-accent hover:text-accent-foreground bg-transparent"
+                    >
+                      Back to Home
+                    </Button>
+                  </Link>
+                </div>
+                <p className="text-sm text-muted-foreground max-w-prose">
+                  Looking for the full documentation? Visit the external docs site.
+                </p>
+              </div>
             </div>
           </div>
         </div>
