@@ -6,23 +6,25 @@ import type { DocNode } from "@/lib/docs";
 type Props = {
   tree: DocNode[]
   activePath: string
+  titles?: Record<string, string>
 }
 
-export function DocsSidebar({ tree, activePath }: Props) {
+export function DocsSidebar({ tree, activePath, titles }: Props) {
   const expanded = collectExpandedKeys(tree, activePath);
   return (
     <div className="space-y-2">
       <Accordion type="multiple" defaultValue={expanded} className="w-full">
         {tree.map((node) => (
-          <SidebarNode key={node.path} node={node} activePath={activePath} />
+          <SidebarNode key={node.path} node={node} activePath={activePath} titles={titles} />
         ))}
       </Accordion>
     </div>
   );
 }
 
-function SidebarNode({ node, activePath }: { node: DocNode; activePath: string }) {
+function SidebarNode({ node, activePath, titles }: { node: DocNode; activePath: string; titles?: Record<string, string> }) {
   if (node.type === "file") {
+    const label = titles?.[node.path] || node.name;
     return (
       <Link
         href={`/docs/${toSlug(node.path)}`}
@@ -31,7 +33,7 @@ function SidebarNode({ node, activePath }: { node: DocNode; activePath: string }
           isActive(node.path, activePath) && "bg-muted font-medium"
         )}
       >
-        {node.name}
+        {label}
       </Link>
     );
   }
@@ -44,7 +46,7 @@ function SidebarNode({ node, activePath }: { node: DocNode; activePath: string }
         <div className="space-y-1">
           {hasChildren ? (
             node.children!.map((child) => (
-              <SidebarNode key={child.path} node={child} activePath={activePath} />
+              <SidebarNode key={child.path} node={child} activePath={activePath} titles={titles} />
             ))
           ) : null}
         </div>
