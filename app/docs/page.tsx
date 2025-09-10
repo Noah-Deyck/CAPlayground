@@ -30,11 +30,11 @@ export default async function DocsPage() {
               <DocsSidebar tree={tree} activePath={""} titles={titles} />
             </aside>
             <div className="prose dark:prose-invert max-w-none">
-              <h1>Documentation</h1>
-              <p className="text-muted-foreground">Choose a page from the sidebar to get started.</p>
+              <h1 className="text-3xl md:text-4xl font-bold tracking-tight">Documentation</h1>
+              <p className="text-muted-foreground mb-8">Choose a page from the sidebar to get started.</p>
               {recommended.length > 0 && (
-                <div className="mt-8">
-                  <h2 className="mt-0">Recommended to start</h2>
+                <div className="mt-16">
+                  <h2 className="mt-0 text-2xl md:text-3xl font-semibold tracking-tight">Recommended to start</h2>
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                     {recommended.map((p) => {
                       const slug = p.replace(/\.(md|mdx)$/i, "")
