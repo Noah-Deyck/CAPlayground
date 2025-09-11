@@ -119,6 +119,16 @@ function normalizeMarkdown(src: string): string {
     const titles = await getTitlesMap(filePaths);
     const normalized = normalizeMarkdown(content);
 
+    const authors: { name: string; url: string }[] = normalized.match(/^---\n([\s\S]*?)\n---/m)?.[1]
+      ?.match(/(authors?|authers?)\s*:\s*(.+)$/im)?.[2]
+      ?.split(/\s*,\s*/)
+      .map((entry: string) => {
+        const match = /(.*?)\((https?:[^)]+)\)/.exec(entry.trim());
+        if (match) return { name: match[1].trim(), url: match[2].trim() };
+        return { name: entry.trim(), url: "#" };
+      })
+      .filter((a: { name: string; url: string }) => a.name) || [];
+
     return (
       <div className="min-h-screen flex flex-col">
         <Navigation />
@@ -128,7 +138,19 @@ function normalizeMarkdown(src: string): string {
               <aside className="md:sticky md:top-20 h-fit md:max-h-[80vh] md:overflow-auto border rounded-md p-3">
                 <DocsSidebar tree={tree} activePath={resolvedPath} titles={titles} />
               </aside>
-              <article className="prose prose-lg md:prose-xl dark:prose-invert max-w-3xl">
+              <article className="prose prose-lg md:prose-xl dark:prose-invert max-w-4xl">
+                {authors.length > 0 && (
+                  <div className="mb-6 p-4 rounded-xl border bg-gradient-to-r from-accent/10 to-transparent">
+                    <div className="text-sm text-muted-foreground">Authors</div>
+                    <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1">
+                      {authors.map((a: { name: string; url: string }, i: number) => (
+                        <a key={i} href={a.url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-accent hover:underline">
+                          <span className="font-medium">{a.name}</span>
+                        </a>
+                      ))}
+                    </div>
+                  </div>
+                )}
                 <ReactMarkdown
                   remarkPlugins={[remarkGfm, remarkFrontmatter]}
                   rehypePlugins={[
@@ -139,11 +161,12 @@ function normalizeMarkdown(src: string): string {
                   ]}
                   components={{
                     h1: (props) => <h1 {...props} className={cn("text-3xl md:text-4xl font-bold tracking-tight mb-4", props.className)} />,
-                    h2: (props) => <h2 {...props} className={cn("text-2xl md:text-3xl font-semibold mt-8 mb-3", props.className)} />,
+                    h2: (props) => <h2 {...props} className={cn("text-2xl md:text-3xl font-semibold mt-10 mb-4", props.className)} />,
                     h3: (props) => <h3 {...props} className={cn("text-xl md:text-2xl font-semibold mt-6 mb-2", props.className)} />,
                     p: (props) => <p {...props} className={cn("text-base md:text-lg leading-7", props.className)} />,
-                    ul: (props) => <ul {...props} className={cn("list-disc pl-6 my-4", props.className)} />,
-                    ol: (props) => <ol {...props} className={cn("list-decimal pl-6 my-4", props.className)} />,
+                    ul: (props) => <ul {...props} className={cn("list-disc pl-6 my-4 space-y-2 marker:text-accent", props.className)} />,
+                    ol: (props) => <ol {...props} className={cn("list-decimal pl-6 my-4 space-y-2", props.className)} />,
+                    li: (props) => <li {...props} className={cn("p-3 rounded-lg border bg-card/50 shadow-sm bg-gradient-to-r from-accent/5 to-transparent", props.className)} />,
                     a: (props) => {
                       const hrefRaw = String(props.href || "");
                       const isAbsolute = /^(https?:)?\/\//i.test(hrefRaw) || hrefRaw.startsWith("/");

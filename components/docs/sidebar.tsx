@@ -12,7 +12,7 @@ type Props = {
 export function DocsSidebar({ tree, activePath, titles }: Props) {
   const expanded = collectExpandedKeys(tree, activePath);
   return (
-    <div className="space-y-2">
+    <div className="space-y-3">
       <Accordion type="multiple" defaultValue={expanded} className="w-full">
         {tree.map((node) => (
           <SidebarNode key={node.path} node={node} activePath={activePath} titles={titles} />
@@ -29,8 +29,9 @@ function SidebarNode({ node, activePath, titles }: { node: DocNode; activePath: 
       <Link
         href={`/docs/${toSlug(node.path)}`}
         className={cn(
-          "block rounded px-2 py-1 text-sm hover:bg-muted/60",
-          isActive(node.path, activePath) && "bg-muted font-medium"
+          "block rounded-lg px-3 py-2 text-sm border bg-card/50 shadow-sm transition-colors",
+          "hover:bg-card",
+          isActive(node.path, activePath) && "bg-card font-medium border-accent/40"
         )}
       >
         {label}
@@ -40,10 +41,10 @@ function SidebarNode({ node, activePath, titles }: { node: DocNode; activePath: 
   const hasChildren = node.children && node.children.length > 0;
   const id = node.path || node.name;
   return (
-    <AccordionItem value={id} className="border-none">
-      <AccordionTrigger className="px-2 text-sm">{node.name}</AccordionTrigger>
-      <AccordionContent className="pl-2">
-        <div className="space-y-1">
+    <AccordionItem value={id} className="border rounded-lg bg-card/50 shadow-sm overflow-hidden mb-2">
+      <AccordionTrigger className="px-3 py-2 text-sm hover:no-underline">{node.name}</AccordionTrigger>
+      <AccordionContent className="px-2 pb-2">
+        <div className="space-y-2">
           {hasChildren ? (
             node.children!.map((child) => (
               <SidebarNode key={child.path} node={child} activePath={activePath} titles={titles} />

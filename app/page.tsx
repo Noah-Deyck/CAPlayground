@@ -3,6 +3,7 @@ import { Footer } from "@/components/footer"
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
 import { Send, Map as MapIcon } from "lucide-react"
+import Script from "next/script"
 
 export default function HomePage() {
   return (
@@ -57,6 +58,14 @@ export default function HomePage() {
       </div>
 
       <Footer />
+      <Script id="hs-inline-init" strategy="afterInteractive">
+        {`window.hsConversationsSettings = { loadImmediately: true };`}
+      </Script>
+      <Script
+        id="hs-script-loader"
+        strategy="afterInteractive"
+        src="https://js-eu1.hs-scripts.com/146878747.js"
+      />
     </div>
   )
 }

@@ -1,4 +1,5 @@
 import Link from "next/link"
+import Script from "next/script"
 import { Navigation } from "@/components/navigation"
 import { Footer } from "@/components/footer"
 import { getDocsTree, getTitlesMap } from "@/lib/docs"
@@ -31,10 +32,10 @@ export default async function DocsPage() {
             </aside>
             <div className="prose dark:prose-invert max-w-none">
               <h1 className="text-3xl md:text-4xl font-bold tracking-tight">Documentation</h1>
-              <p className="text-muted-foreground mb-8">Choose a page from the sidebar to get started.</p>
+              <p className="text-muted-foreground mb-6">Choose a page from the sidebar to get started.</p>
               {recommended.length > 0 && (
-                <div className="mt-16">
-                  <h2 className="mt-0 text-2xl md:text-3xl font-semibold tracking-tight">Recommended to start</h2>
+                <div className="mt-6">
+                  <h2 className="mt-0 mb-4 text-2xl md:text-3xl font-semibold tracking-tight">Recommended to start</h2>
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                     {recommended.map((p) => {
                       const slug = p.replace(/\.(md|mdx)$/i, "")
@@ -62,6 +63,14 @@ export default async function DocsPage() {
         </div>
       </main>
       <Footer />
+      <Script id="hs-inline-init" strategy="afterInteractive">
+        {`window.hsConversationsSettings = { loadImmediately: true };`}
+      </Script>
+      <Script
+        id="hs-script-loader"
+        strategy="afterInteractive"
+        src="https://js-eu1.hs-scripts.com/146878747.js"
+      />
     </div>
   )
 }
