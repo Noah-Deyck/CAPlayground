@@ -6,6 +6,7 @@ import { fetchMarkdown } from "@/lib/docs";
 import { getDocsTree } from "@/lib/docs";
 import { getRawBaseForDir } from "@/lib/docs";
 import { getTitlesMap } from "@/lib/docs";
+import { getOrgContributorsMap } from "@/lib/docs";
 import type { DocNode } from "@/lib/docs";
 import { getDefaultDocForDir } from "@/lib/docs";
 import { redirect } from "next/navigation";
@@ -129,6 +130,33 @@ function normalizeMarkdown(src: string): string {
       })
       .filter((a: { name: string; url: string }) => a.name) || [];
 
+    // Map GitHub usernames to contribution counts and attach to authors
+    const contributors = await getOrgContributorsMap();
+    // Known alias mappings to capture previous contributions under different handles
+    const USERNAME_ALIASES: Record<string, string[]> = {
+      noah: ["noahdeyck", "ndeyck", "noah"],
+      enkei: ["enkei64", "enkei"],
+      squair: ["squair"],
+    };
+    const normalizeHandle = (s: string) => s.toLowerCase().replace(/[^a-z0-9_-]/g, "");
+    const extractUsernameFromUrl = (url?: string) => /github\.com\/([^/]+)/i.exec(url || "")?.[1] || "";
+    const nameToCandidates = (name: string): string[] => {
+      const key = normalizeHandle(name);
+      const aliasList = USERNAME_ALIASES[key] || [];
+      const compact = normalizeHandle(name.replace(/\s+/g, ""));
+      const uniq = Array.from(new Set([key, compact, ...aliasList])).filter(Boolean);
+      return uniq;
+    };
+    const authorsWithCounts = authors.map((a) => {
+      const fromUrl = normalizeHandle(extractUsernameFromUrl(a.url));
+      const candidates = Array.from(new Set([
+        fromUrl,
+        ...nameToCandidates(a.name),
+      ])).filter(Boolean);
+      const count = candidates.reduce((sum, u) => sum + (contributors[normalizeHandle(u)] ?? 0), 0);
+      return { ...a, count } as { name: string; url: string; count: number };
+    });
+
     return (
       <div className="min-h-screen flex flex-col">
         <Navigation />
@@ -139,14 +167,19 @@ function normalizeMarkdown(src: string): string {
                 <DocsSidebar tree={tree} activePath={resolvedPath} titles={titles} />
               </aside>
               <article className="prose prose-lg md:prose-xl dark:prose-invert max-w-4xl">
-                {authors.length > 0 && (
+                {authorsWithCounts.length > 0 && (
                   <div className="mb-6 p-4 rounded-xl border bg-gradient-to-r from-accent/10 to-transparent">
                     <div className="text-sm text-muted-foreground">Authors</div>
                     <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1">
-                      {authors.map((a: { name: string; url: string }, i: number) => (
-                        <a key={i} href={a.url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-accent hover:underline">
-                          <span className="font-medium">{a.name}</span>
-                        </a>
+                      {authorsWithCounts.map((a: { name: string; url: string; count: number }, i: number) => (
+                        <span key={i} className="inline-flex items-center gap-2">
+                          <a href={a.url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-accent hover:underline">
+                            <span className="font-medium">{a.name}</span>
+                          </a>
+                          <span className="inline-flex items-center rounded-full bg-accent/15 text-accent px-2 py-0.5 text-xs font-medium">
+                            {a.count} commits
+                          </span>
+                        </span>
                       ))}
                     </div>
                   </div>

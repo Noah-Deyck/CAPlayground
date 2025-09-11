@@ -1,5 +1,4 @@
 import Link from "next/link"
-import Script from "next/script"
 import { Navigation } from "@/components/navigation"
 import { Footer } from "@/components/footer"
 import { getDocsTree, getTitlesMap } from "@/lib/docs"
@@ -63,14 +62,6 @@ export default async function DocsPage() {
         </div>
       </main>
       <Footer />
-      <Script id="hs-inline-init" strategy="afterInteractive">
-        {`window.hsConversationsSettings = { loadImmediately: true };`}
-      </Script>
-      <Script
-        id="hs-script-loader"
-        strategy="afterInteractive"
-        src="https://js-eu1.hs-scripts.com/146878747.js"
-      />
     </div>
   )
 }

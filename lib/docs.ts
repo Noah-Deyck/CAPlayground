@@ -33,6 +33,74 @@ function githubHeaders(): HeadersInit | undefined {
   }
 }
 
+// Aggregate contributors across all repositories in the org.
+let ORG_CONTRIB_CACHE: { map: Record<string, number>; ts: number } | null = null;
+export async function getOrgContributorsMap(): Promise<Record<string, number>> {
+  const now = Date.now();
+  if (ORG_CONTRIB_CACHE && now - ORG_CONTRIB_CACHE.ts < 5 * 60 * 1000) return ORG_CONTRIB_CACHE.map;
+  // List repos for the org
+  const reposUrl = `https://api.github.com/orgs/${OWNER}/repos?per_page=100&type=all&sort=updated`;
+  try {
+    const reposRes = await fetch(reposUrl, { headers: githubHeaders() });
+    if (!reposRes.ok) return {};
+    const repos = (await reposRes.json()) as Array<{ name: string; archived?: boolean; disabled?: boolean }>;
+    const activeRepos = repos.filter((r) => !r.archived && !r.disabled).map((r) => r.name);
+    // Concurrency limit to avoid rate spikes
+    const limit = 5;
+    let i = 0;
+    const acc: Record<string, number> = {};
+    async function worker() {
+      while (i < activeRepos.length) {
+        const idx = i++;
+        const repo = activeRepos[idx];
+        const url = `https://api.github.com/repos/${OWNER}/${repo}/contributors?per_page=100&anon=false`;
+        try {
+          const res = await fetch(url, { headers: githubHeaders() });
+          if (!res.ok) continue;
+          const list = (await res.json()) as Array<{ login: string; contributions: number }>;
+          for (const c of list) {
+            const key = (c.login || "").toLowerCase();
+            if (!key) continue;
+            acc[key] = (acc[key] || 0) + (c.contributions || 0);
+          }
+        } catch {}
+      }
+    }
+    await Promise.all(Array.from({ length: Math.min(limit, activeRepos.length) }, () => worker()));
+    ORG_CONTRIB_CACHE = { map: acc, ts: now };
+    return acc;
+  } catch {
+    return {};
+  }
+}
+
+
+// --- Contributors ---
+let CONTRIBUTORS_CACHE: { map: Record<string, number>; ts: number } | null = null;
+/**
+ * Returns a map of GitHub username -> contributions count for the docs repo.
+ */
+export async function getContributorsMap(): Promise<Record<string, number>> {
+  const now = Date.now();
+  if (CONTRIBUTORS_CACHE && now - CONTRIBUTORS_CACHE.ts < 5 * 60 * 1000) {
+    return CONTRIBUTORS_CACHE.map;
+  }
+  const url = `https://api.github.com/repos/${OWNER}/${REPO}/contributors?per_page=100&anon=false`;
+  try {
+    const res = await fetch(url, { headers: githubHeaders() });
+    if (!res.ok) return {};
+    const json = (await res.json()) as Array<{ login: string; contributions: number }>;
+    const map: Record<string, number> = {};
+    for (const c of json) {
+      if (c && c.login) map[c.login.toLowerCase()] = c.contributions || 0;
+    }
+    CONTRIBUTORS_CACHE = { map, ts: now };
+    return map;
+  } catch {
+    return {};
+  }
+}
+
 let DEFAULT_BRANCH: string = "main";
 export async function getDefaultBranch(): Promise<string> {
   if (DEFAULT_BRANCH) return DEFAULT_BRANCH;
